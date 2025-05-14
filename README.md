@@ -1,4 +1,4 @@
-![Build Status](https://github.com/victorsordi/devops-capstone-project/actions/workflows/ci-build.yaml/badge.svg)
+[![CI Build](https://github.com/VictorSordi/devops-capstone-project/actions/workflows/ci-build.yml/badge.svg)](https://github.com/VictorSordi/devops-capstone-project/actions/workflows/ci-build.yml)
 
 # DevOps Capstone Template
 
