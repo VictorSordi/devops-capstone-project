@@ -17,14 +17,13 @@ from service.common import status  # For test status codes
 app = Flask(__name__)
 app.config.from_object(config)
 
-# Activate testing mode if needed
+# Activate testing mode
 app.testing = app.config.get("TESTING", False)
 
-# Initialize Talisman for security headers (only outside testing)
+# Initialize Talisman only if not in test mode
+talisman = None
 if not app.testing:
     talisman = Talisman(app)
-else:
-    talisman = None  # Skip Talisman in test mode
 
 # Enable CORS
 CORS(app)  # Adds Access-Control-Allow-Origin: *
@@ -59,12 +58,13 @@ class TestAccountService(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         """Run once before all tests"""
+        global talisman
         if talisman:
-            talisman.force_https = False  # Disable HTTPS redirection in Talisman (if active)
+            talisman.force_https = False  # Ensure HTTPS is disabled during tests
 
     def setUp(self):
         """Set up before each test"""
-        app.testing = True  # Ensure testing mode is on
+        app.testing = True  # Ensure Flask is in test mode
         self.client = app.test_client()
 
     def test_cors_security(self):
