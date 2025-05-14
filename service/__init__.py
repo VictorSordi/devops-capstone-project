@@ -1,19 +1,23 @@
 """
 Package: service
-Package for the application models and service routes
+Package for the application models and service routes.
 This module creates and configures the Flask app and sets up the logging
-and SQL database
+and SQL database.
 """
 import sys
 from flask import Flask
 from service import config
 from service.common import log_handlers
+from flask_talisman import Talisman
 
 # Create Flask application
 app = Flask(__name__)
 app.config.from_object(config)
 
-# Import the routes After the Flask app is created
+# Initialize Talisman for security headers
+talisman = Talisman(app)
+
+# Import the routes after the Flask app is created
 # pylint: disable=wrong-import-position, cyclic-import, wrong-import-order
 from service import routes, models  # noqa: F401 E402
 
@@ -28,10 +32,10 @@ app.logger.info("  A C C O U N T   S E R V I C E   R U N N I N G  ".center(70, "
 app.logger.info(70 * "*")
 
 try:
-    models.init_db(app)  # make our database tables
+    models.init_db(app)  # Make our database tables
 except Exception as error:  # pylint: disable=broad-except
     app.logger.critical("%s: Cannot continue", error)
-    # gunicorn requires exit code 4 to stop spawning workers when they die
+    # Gunicorn requires exit code 4 to stop spawning workers when they die
     sys.exit(4)
 
 app.logger.info("Service initialized!")
