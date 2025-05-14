@@ -7,33 +7,33 @@ and SQL database.
 import sys
 import unittest
 from flask import Flask
+from flask_cors import CORS  # CORS support
 from flask_talisman import Talisman
-from flask_cors import CORS  # Importação do CORS
 from service import config
 from service.common import log_handlers
-from service.common import status  # Para usar nos testes
+from service.common import status  # For test status codes
 
 # Create Flask application
 app = Flask(__name__)
 app.config.from_object(config)
 
-# Initialize Talisman for security headers (except in testing)
-if app.config.get("ENV") != "testing":
+# Activate testing mode if needed
+app.testing = app.config.get("TESTING", False)
+
+# Initialize Talisman for security headers (only outside testing)
+if not app.testing:
     talisman = Talisman(app)
 else:
-    talisman = None  # Desativado em ambiente de teste
+    talisman = None  # Skip Talisman in test mode
 
 # Enable CORS
-CORS(app)  # Agora o app inclui o cabeçalho: Access-Control-Allow-Origin: *
+CORS(app)  # Adds Access-Control-Allow-Origin: *
 
-# Import the routes after the Flask app is created
-# pylint: disable=wrong-import-position, cyclic-import, wrong-import-order
-from service import routes, models  # noqa: F401 E402
+# Import routes and models after app creation
+from service import routes, models  # noqa: F401, E402
+from service.common import error_handlers, cli_commands  # noqa: F401, E402
 
-# pylint: disable=wrong-import-position
-from service.common import error_handlers, cli_commands  # noqa: F401 E402
-
-# Set up logging for production
+# Set up logging
 log_handlers.init_logging(app, "gunicorn.error")
 
 app.logger.info(70 * "*")
@@ -41,28 +41,34 @@ app.logger.info("  A C C O U N T   S E R V I C E   R U N N I N G  ".center(70, "
 app.logger.info(70 * "*")
 
 try:
-    models.init_db(app)  # Make our database tables
-except Exception as error:  # pylint: disable=broad-except
+    models.init_db(app)  # Initialize DB
+except Exception as error:
     app.logger.critical("%s: Cannot continue", error)
-    # Gunicorn requires exit code 4 to stop spawning workers when they die
-    sys.exit(4)
+    sys.exit(4)  # Exit with code 4 if DB fails (Gunicorn requirement)
 
 app.logger.info("Service initialized!")
 
-# HTTPS environment for testing CORS
+# Environment override for CORS and HTTPS in testing
 HTTPS_ENVIRON = {"wsgi.url_scheme": "https"}
 
 
+# Test class included in same file for simplicity
 class TestAccountService(unittest.TestCase):
     """Test suite for the Account Service"""
 
+    @classmethod
+    def setUpClass(cls):
+        """Run once before all tests"""
+        if talisman:
+            talisman.force_https = False  # Disable HTTPS redirection in Talisman (if active)
+
     def setUp(self):
         """Set up before each test"""
+        app.testing = True  # Ensure testing mode is on
         self.client = app.test_client()
 
     def test_cors_security(self):
         """It should return a CORS header"""
         response = self.client.get("/", environ_overrides=HTTPS_ENVIRON)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        # Check for the CORS header
         self.assertEqual(response.headers.get("Access-Control-Allow-Origin"), "*")
