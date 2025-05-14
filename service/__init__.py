@@ -5,10 +5,11 @@ This module creates and configures the Flask app and sets up the logging
 and SQL database.
 """
 import sys
+import unittest
 from flask import Flask
+from flask_talisman import Talisman
 from service import config
 from service.common import log_handlers
-from flask_talisman import Talisman
 
 # Create Flask application
 app = Flask(__name__)
@@ -39,3 +40,12 @@ except Exception as error:  # pylint: disable=broad-except
     sys.exit(4)
 
 app.logger.info("Service initialized!")
+
+
+class TestAccountService(unittest.TestCase):
+    """Test suite for the Account Service"""
+
+    @classmethod
+    def setUpClass(cls):
+        """Run once before all tests"""
+        talisman.force_https = False  # Desativa HTTPS forçado nos testes
