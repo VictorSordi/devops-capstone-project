@@ -17,8 +17,11 @@ from service.common import status  # Para usar nos testes
 app = Flask(__name__)
 app.config.from_object(config)
 
-# Initialize Talisman for security headers
-talisman = Talisman(app)
+# Initialize Talisman for security headers (except in testing)
+if app.config.get("ENV") != "testing":
+    talisman = Talisman(app)
+else:
+    talisman = None  # Desativado em ambiente de teste
 
 # Enable CORS
 CORS(app)  # Agora o app inclui o cabeçalho: Access-Control-Allow-Origin: *
@@ -52,11 +55,6 @@ HTTPS_ENVIRON = {"wsgi.url_scheme": "https"}
 
 class TestAccountService(unittest.TestCase):
     """Test suite for the Account Service"""
-
-    @classmethod
-    def setUpClass(cls):
-        """Run once before all tests"""
-        talisman.force_https = False  # Desativa HTTPS forçado nos testes
 
     def setUp(self):
         """Set up before each test"""
