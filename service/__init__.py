@@ -8,8 +8,10 @@ import sys
 import unittest
 from flask import Flask
 from flask_talisman import Talisman
+from flask_cors import CORS  # Importação do CORS
 from service import config
 from service.common import log_handlers
+from service.common import status  # Para usar nos testes
 
 # Create Flask application
 app = Flask(__name__)
@@ -17,6 +19,9 @@ app.config.from_object(config)
 
 # Initialize Talisman for security headers
 talisman = Talisman(app)
+
+# Enable CORS
+CORS(app)  # Agora o app inclui o cabeçalho: Access-Control-Allow-Origin: *
 
 # Import the routes after the Flask app is created
 # pylint: disable=wrong-import-position, cyclic-import, wrong-import-order
@@ -41,6 +46,9 @@ except Exception as error:  # pylint: disable=broad-except
 
 app.logger.info("Service initialized!")
 
+# HTTPS environment for testing CORS
+HTTPS_ENVIRON = {"wsgi.url_scheme": "https"}
+
 
 class TestAccountService(unittest.TestCase):
     """Test suite for the Account Service"""
@@ -49,3 +57,14 @@ class TestAccountService(unittest.TestCase):
     def setUpClass(cls):
         """Run once before all tests"""
         talisman.force_https = False  # Desativa HTTPS forçado nos testes
+
+    def setUp(self):
+        """Set up before each test"""
+        self.client = app.test_client()
+
+    def test_cors_security(self):
+        """It should return a CORS header"""
+        response = self.client.get("/", environ_overrides=HTTPS_ENVIRON)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        # Check for the CORS header
+        self.assertEqual(response.headers.get("Access-Control-Allow-Origin"), "*")
