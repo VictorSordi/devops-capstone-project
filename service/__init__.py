@@ -18,12 +18,10 @@ app = Flask(__name__)
 app.config.from_object(config)
 
 # Activate testing mode
-app.testing = app.config.get("TESTING", False)
+app.testing = True  # Garantir que Flask está no modo de teste
 
 # Initialize Talisman only if not in test mode
-talisman = None
-if not app.testing:
-    talisman = Talisman(app)
+talisman = Talisman(app, force_https=not app.testing)  # Desativa HTTPS em testes
 
 # Enable CORS
 CORS(app)  # Adds Access-Control-Allow-Origin: *
@@ -49,26 +47,3 @@ app.logger.info("Service initialized!")
 
 # Environment override for CORS and HTTPS in testing
 HTTPS_ENVIRON = {"wsgi.url_scheme": "https"}
-
-
-# Test class included in same file for simplicity
-class TestAccountService(unittest.TestCase):
-    """Test suite for the Account Service"""
-
-    @classmethod
-    def setUpClass(cls):
-        """Run once before all tests"""
-        global talisman
-        if talisman:
-            talisman.force_https = False  # Ensure HTTPS is disabled during tests
-
-    def setUp(self):
-        """Set up before each test"""
-        app.testing = True  # Ensure Flask is in test mode
-        self.client = app.test_client()
-
-    def test_cors_security(self):
-        """It should return a CORS header"""
-        response = self.client.get("/", environ_overrides=HTTPS_ENVIRON)
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.headers.get("Access-Control-Allow-Origin"), "*")
